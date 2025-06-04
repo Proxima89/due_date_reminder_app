@@ -1,0 +1,5 @@
+due_date_reminder:
+  cron: "0 0 * * *"  # Run every 5 minutes
+  class: "ScheduledDueDateReminderJob"
+  queue: default
+  args: [] 
