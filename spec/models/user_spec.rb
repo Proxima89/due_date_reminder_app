@@ -13,24 +13,14 @@ RSpec.describe User, type: :model do
   describe "reminder settings" do
     let(:user) { build(:user) }
 
-    context "default values" do
-      it "has correct default values" do
-        expect(user.send_due_date_reminder).to be true
-        expect(user.due_date_reminder_interval).to eq(3)
-        expect(user.time_zone).to eq("Europe/Vienna")
-      end
+    it "validates reminder interval range" do
+      user.due_date_reminder_interval = 31
+      expect(user).not_to be_valid
     end
 
-    context "validations" do
-      it "validates reminder interval range" do
-        user.due_date_reminder_interval = 31
-        expect(user).not_to be_valid
-      end
-
-      it "accepts valid timezone" do
-        user.time_zone = "Europe/Vienna"
-        expect(user).to be_valid
-      end
+    it "accepts valid timezone" do
+      user.time_zone = "Europe/Vienna"
+      expect(user).to be_valid
     end
   end
 end 

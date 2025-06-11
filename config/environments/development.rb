@@ -35,6 +35,11 @@ Rails.application.configure do
   # Make template changes take effect immediately.
   config.action_mailer.perform_caching = false
 
+  # Log full email content
+  config.action_mailer.perform_deliveries = true
+  config.action_mailer.delivery_method = :test
+  config.log_level = :debug
+
   config.action_mailer.delivery_method = :smtp
   config.action_mailer.smtp_settings = { address: "localhost", port: 1025 }
   # Set localhost to be used by links generated in mailer templates.

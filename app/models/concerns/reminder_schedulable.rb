@@ -2,76 +2,47 @@ module ReminderSchedulable
   extend ActiveSupport::Concern
 
   included do
-    after_commit :schedule_reminder, on: :create
+    after_commit :schedule_reminders, on: :create
   end
 
   private
 
-  def schedule_reminder
-    return unless due_date && user&.send_due_date_reminder
-
-    # Schedule initial reminder
-    schedule_single_reminder(initial_reminder_datetime)
-    
-    # Schedule additional reminders based on interval
-    if user.due_date_reminder_interval > 1
-      schedule_interval_reminders
-    end
+  def schedule_reminders
+    schedule_initial_reminder
+    schedule_interval_reminders
   end
 
-  def schedule_single_reminder(datetime)
-    schedule_job(datetime)
+  def schedule_initial_reminder
+    schedule_reminder_for_date(due_date)
   end
 
   def schedule_interval_reminders
-    total_reminders = user.due_date_reminder_interval
-    initial_time = initial_reminder_datetime
-    due_date_time = due_date.in_time_zone(user.time_zone)
-    
-    hours_between_reminders = calculate_hours_between_reminders(initial_time, due_date_time, total_reminders)
-    schedule_additional_reminders(initial_time, hours_between_reminders, total_reminders, due_date_time)
-  end
+    return unless user&.due_date_reminder_interval > 0
 
-  def calculate_hours_between_reminders(initial_time, due_date_time, total_reminders)
-    total_hours = ((due_date_time - initial_time) / 3600).round
-    total_hours / (total_reminders - 1)
-  end
-
-  def schedule_additional_reminders(initial_time, hours_between_reminders, total_reminders, due_date_time)
-    (total_reminders - 1).times do |i|
-      reminder_time = initial_time + (hours_between_reminders * (i + 1)).hours
-      break if reminder_time >= due_date_time
-      schedule_job(reminder_time)
+    # Schedule reminders based on interval
+    (1..user.due_date_reminder_interval).each do |interval|
+      reminder_date = due_date - interval.days
+      # Only schedule if the reminder date is in the future
+      schedule_reminder_for_date(reminder_date) if reminder_date > Date.current
     end
   end
 
-  def initial_reminder_datetime
-    tz = ActiveSupport::TimeZone[user.time_zone]
-    reminder_date = due_date.in_time_zone(tz) - user.due_date_reminder_offset.days
-    reminder_date.to_time.change(
-      hour: user.due_date_reminder_time.hour,
-      min: user.due_date_reminder_time.min,
-      sec: 0
-    )
-  end
+  def schedule_reminder_for_date(date)
+    return unless user&.send_due_date_reminder?
 
-  def schedule_job(reminder_datetime)
-    # If the reminder time has passed, schedule for next day
-    if reminder_datetime <= Time.current
-      reminder_datetime = reminder_datetime + 1.day
-    end
+    reminder_time = user.due_date_reminder_time
+    offset_day = user.due_date_reminder_offset
+    reminder_date = date - offset_day.day
 
-    # Calculate minutes until the reminder should be sent
-    minutes_until_reminder = ((reminder_datetime - Time.current) / 60).round
+    scheduled_time = reminder_date.in_time_zone(user.time_zone).change(
+      hour: reminder_time.hour,
+      min: reminder_time.min
+    ) # .in_time_zone converts a Date to a Time object in the specified timezone, takes the date and sets it to midnight (00:00:00) in that timezone.
 
-    # Only schedule if the reminder is in the future
-    return if minutes_until_reminder <= 0
-
-    # Schedule the job
     Sidekiq::Client.push(
       "class" => DueDateReminderJob,
-      "args" => [user.id, id, "email"], # Use string instead of symbol
-      "at" => Time.current.to_f + (minutes_until_reminder * 60)
+      "args" => [user.id, id],
+      "at" => scheduled_time.to_i
     )
   end
-end 
+end

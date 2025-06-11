@@ -7,7 +7,7 @@ RSpec.describe Ticket, type: :model do
   end
 
   after do
-    Sidekiq::Testing.inline!
+    Sidekiq::Worker.clear_all
   end
 
   describe "associations" do
@@ -16,16 +16,16 @@ RSpec.describe Ticket, type: :model do
 
   describe "callbacks" do
     let(:user) { create(:user) }
-    let(:ticket) { build(:ticket, user: user) }
+    let(:ticket) { build(:ticket, user: user, due_date: 5.days.from_now) }
 
     it "schedules initial and interval reminders after creation" do
       expect {
         ticket.save!
-      }.to change(DueDateReminderJob.jobs, :size).by(2) # One for initial, one for interval
+      }.to change(DueDateReminderJob.jobs, :size).by(4) # 1 initial + 3 interval reminders
 
       # Verify the jobs are scheduled with correct arguments
-      expect(DueDateReminderJob.jobs.last(2).map { |job| job["args"] })
-        .to contain_exactly([user.id, ticket.id, "email"], [user.id, ticket.id, "email"])
+      jobs = DueDateReminderJob.jobs.last(4)
+      expect(jobs.all? { |job| job["args"] == [user.id, ticket.id] }).to be true
     end
 
     context "when user has interval set to 1" do
@@ -33,12 +33,13 @@ RSpec.describe Ticket, type: :model do
         user.update!(due_date_reminder_interval: 1)
       end
 
-      it "schedules only initial reminder" do
+      it "schedules initial and one interval reminder" do
         expect {
           ticket.save!
-        }.to change(DueDateReminderJob.jobs, :size).by(1)
+        }.to change(DueDateReminderJob.jobs, :size).by(2) # 1 initial + 1 interval
 
-        expect(DueDateReminderJob.jobs.last["args"]).to eq([user.id, ticket.id, "email"])
+        jobs = DueDateReminderJob.jobs.last(2)
+        expect(jobs.all? { |job| job["args"] == [user.id, ticket.id] }).to be true
       end
     end
   end
