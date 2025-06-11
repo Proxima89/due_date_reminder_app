@@ -288,8 +288,6 @@ GEM
       rubocop-performance (>= 1.24)
       rubocop-rails (>= 2.30)
     ruby-progressbar (1.13.0)
-    rufus-scheduler (3.9.2)
-      fugit (~> 1.1, >= 1.11.1)
     securerandom (0.4.1)
     shoulda-matchers (6.5.0)
       activesupport (>= 5.2.0)
@@ -299,9 +297,6 @@ GEM
       logger (>= 1.6.2)
       rack (>= 3.1.0)
       redis-client (>= 0.23.2)
-    sidekiq-scheduler (6.0.1)
-      rufus-scheduler (~> 3.2)
-      sidekiq (>= 7.3, < 9)
     solid_cable (3.0.8)
       actioncable (>= 7.2)
       activejob (>= 7.2)
@@ -372,7 +367,6 @@ DEPENDENCIES
   rubocop-rails-omakase
   shoulda-matchers
   sidekiq
-  sidekiq-scheduler
   solid_cable
   solid_cache
   solid_queue

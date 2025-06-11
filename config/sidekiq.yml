@@ -2,11 +2,4 @@
 :queues:
   - default
   - mailers
-
-:scheduler:
-  :schedule:
-    daily_due_date_reminder:
-      cron: "0 0 * * *"  # Run at midnight every day
-      class: "ScheduledDueDateReminderJob"
-      queue: default
-      args: []
+ 
